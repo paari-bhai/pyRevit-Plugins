@@ -38,6 +38,7 @@ DEFAULTS = {
     "dwg": {
         "setup": "<In-session>",
         "version": "Default",
+        "colors": "TrueColorPerView",   # TrueColorPerView | TrueColor | IndexColors | FromSetup
         "merged_views": True,           # False = views on sheets as xrefs
         "shared_coords": False,
         "hide_ref_planes": True,

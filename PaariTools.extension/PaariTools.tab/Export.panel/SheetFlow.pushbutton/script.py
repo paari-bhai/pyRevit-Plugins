@@ -27,6 +27,33 @@ PDF_RASTER_QUALITY = ["Low", "Medium", "High", "Presentation"]
 PDF_COLORS = ["Color", "GrayScale", "BlackLine"]
 PDF_DPI = ["DPI72", "DPI144", "DPI300", "DPI600", "DPI1200", "DPI2400", "DPI4000"]
 ACAD_VERSIONS = ["Default", "R2018", "R2013", "R2010", "R2007"]
+DWG_COLORS = [  # (label, ExportColorMode member)
+    ("True colour per view (RGB as shown)", "TrueColorPerView"),
+    ("True colour (RGB from object styles)", "TrueColor"),
+    ("Index colours (AutoCAD 255)", "IndexColors"),
+    ("Use the export setup's colours", "FromSetup"),
+]
+DWG_COLOR_LABELS = [c[0] for c in DWG_COLORS]
+DWG_COLOR_BY_LABEL = dict(DWG_COLORS)
+DWG_LABEL_BY_COLOR = dict((v, k) for k, v in DWG_COLORS)
+
+# PDF setting key -> UI controls that need that PDFExportOptions property
+PDF_CONTROLS = {
+    "hidden_line": ["rb_pdf_vector", "rb_pdf_raster"],
+    "export_quality": ["cb_pdf_dpi"],
+    "always_raster": ["chk_pdf_always_raster"],
+    "raster_quality": ["cb_pdf_rq"],
+    "colors": ["cb_pdf_colors"],
+    "view_links_blue": ["chk_pdf_links_blue"],
+    "hide_ref_planes": ["chk_pdf_hide_ref"],
+    "hide_unref_tags": ["chk_pdf_hide_tags"],
+    "hide_scope_boxes": ["chk_pdf_hide_scope"],
+    "hide_crop": ["chk_pdf_hide_crop"],
+    "halftone_thin": ["chk_pdf_halftone"],
+    "mask_coincident": ["chk_pdf_mask"],
+    "margin": ["cb_pdf_margin"],
+    "zoom": ["rb_pdf_zoom", "tb_pdf_zoom"],
+}
 DWF_QUALITY = ["Default", "Low", "Medium", "High"]
 DWF_FORMAT = ["Lossless", "Lossy"]
 NWC_COORDS = ["Shared", "Internal"]
@@ -87,6 +114,7 @@ class SheetFlowWindow(forms.WPFWindow):
         fill(self.cb_dwg_setup, setups)
         fill(self.cb_dgn_setup, setups)
         fill(self.cb_dwg_version, ACAD_VERSIONS)
+        fill(self.cb_dwg_colors, DWG_COLOR_LABELS)
         fill(self.cb_dwf_quality, DWF_QUALITY)
         fill(self.cb_dwf_format, DWF_FORMAT)
         fill(self.cb_nwc_coords, NWC_COORDS)
@@ -109,6 +137,15 @@ class SheetFlowWindow(forms.WPFWindow):
         if not exporters.pdf_supported():
             self.en_pdf.IsEnabled = False
             self.en_pdf.ToolTip = "Native PDF export needs Revit 2022 or newer"
+        else:
+            # Grey out PDF options this Revit version's API doesn't have.
+            for key, controls in PDF_CONTROLS.items():
+                prop = exporters.PDF_OPTION_PROPS[key]
+                if not exporters.option_available("PDFExportOptions", prop):
+                    for name in controls:
+                        ctrl = getattr(self, name)
+                        ctrl.IsEnabled = False
+                        ctrl.ToolTip = "Not available in this Revit version ({0})".format(prop)
         if not exporters.nwc_supported():
             self.tb_nwc_note.Text += "  (Exporter not detected on this machine.)"
 
@@ -191,6 +228,8 @@ class SheetFlowWindow(forms.WPFWindow):
         d = cfg["dwg"]
         fill(self.cb_dwg_setup, list(self.cb_dwg_setup.Items), d["setup"])
         fill(self.cb_dwg_version, ACAD_VERSIONS, d["version"])
+        fill(self.cb_dwg_colors, DWG_COLOR_LABELS,
+             DWG_LABEL_BY_COLOR.get(d.get("colors"), DWG_COLOR_LABELS[0]))
         self.chk_dwg_xref.IsChecked = not d["merged_views"]
         self.chk_dwg_shared.IsChecked = d["shared_coords"]
         self.chk_dwg_hide_ref.IsChecked = d["hide_ref_planes"]
@@ -280,6 +319,7 @@ class SheetFlowWindow(forms.WPFWindow):
         cfg["dwg"].update({
             "setup": self.cb_dwg_setup.SelectedItem,
             "version": self.cb_dwg_version.SelectedItem,
+            "colors": DWG_COLOR_BY_LABEL.get(self.cb_dwg_colors.SelectedItem, "TrueColorPerView"),
             "merged_views": not b(self.chk_dwg_xref),
             "shared_coords": b(self.chk_dwg_shared),
             "hide_ref_planes": b(self.chk_dwg_hide_ref),
@@ -606,6 +646,16 @@ class SheetFlowWindow(forms.WPFWindow):
                 if not r.ok:
                     logger.warning(u"{0} {1} {2}: {3}".format(
                         r.fmt, r.item.number, r.item.name, r.message))
+        if exporters.UNSUPPORTED:
+            notes = sorted(exporters.UNSUPPORTED)
+            for n in notes:
+                logger.info(u"Option not available in this Revit version, skipped: {0}".format(n))
+            summary += "\n\nSkipped options this Revit version doesn't support:\n  " + \
+                "\n  ".join(notes[:8]) + ("\n  ..." if len(notes) > 8 else "")
+        if failed:
+            first = [r for r in results if not r.ok and not r.message.startswith("Skipped")][0]
+            summary += u"\n\nFirst failure: {0} {1}: {2}".format(
+                first.fmt, first.item.number, first.message)
         if report_path:
             summary += "\nReport: {0}".format(report_path)
         if cfg["create"]["open_folder"] and ok:

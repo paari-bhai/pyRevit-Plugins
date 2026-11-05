@@ -40,6 +40,7 @@ def count_steps(items, cfg):
 def run(doc, items, cfg, progress=None):
     """Export items. progress(step, total, item, fmt, text) may return False to cancel."""
     results = []
+    exporters.UNSUPPORTED.clear()
     total = count_steps(items, cfg)
     step = [0]
     sheet_t = cfg["naming"]["sheet_template"]
@@ -65,6 +66,10 @@ def run(doc, items, cfg, progress=None):
             if fmt == "XML":
                 name = naming.sanitize("{0}-{1}".format(
                     doc.Title, datetime.datetime.now().strftime("%Y%m%d-%H%M")))
+            try:
+                name = naming.fit_path(folder, name, exporters.EXTENSIONS.get(fmt, ""))
+            except ValueError:
+                pass
             fn = {"PDF": exporters.export_pdf_combined, "DWF": exporters.export_dwf_combined,
                   "XML": exporters.export_xml}[fmt]
             try:
@@ -84,8 +89,10 @@ def run(doc, items, cfg, progress=None):
 
         fn = exporters.PER_ITEM[fmt]
         for item in items:
-            name = naming.unique_name(naming.file_name_for(item, sheet_t, view_t), used)
             try:
+                ext = exporters.EXTENSIONS.get(fmt, "")
+                name = naming.fit_path(folder, naming.file_name_for(item, sheet_t, view_t), ext)
+                name = naming.unique_name(name, used)
                 paths = fn(doc, folder, item, name, fcfg)
                 results.append(Result(item, fmt, True, "Done", paths))
                 status = "Done"
