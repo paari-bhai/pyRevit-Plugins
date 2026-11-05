@@ -676,7 +676,7 @@ class SheetFlowWindow(forms.WPFWindow):
             notes = sorted(exporters.UNSUPPORTED)
             for n in notes:
                 logger.info(u"Option not available in this Revit version, skipped: {0}".format(n))
-            summary += "\n\nSkipped options this Revit version doesn't support:\n  " + \
+            summary += "\n\nNotes (options this Revit version lacks, batch info):\n  " + \
                 "\n  ".join(notes[:8]) + ("\n  ..." if len(notes) > 8 else "")
         if failed:
             first = [r for r in results if not r.ok and not r.message.startswith("Skipped")][0]

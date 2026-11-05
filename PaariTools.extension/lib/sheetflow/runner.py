@@ -100,6 +100,8 @@ def run(doc, items, cfg, progress=None):
                 names[id(item)] = ex
 
         pending = list(items)
+        if fmt == "PDF" and fcfg.get("batch", True) and not exporters.pdf_batch_supported():
+            exporters.UNSUPPORTED.add("PDF batch: not available in this Revit version")
         if fmt == "PDF" and fcfg.get("batch", True) and exporters.pdf_batch_supported():
             pending, cancelled = _run_pdf_batches(doc, folder, items, names, fcfg, results, tick)
             if cancelled:
@@ -152,7 +154,9 @@ def _run_pdf_batches(doc, folder, items, names, fcfg, results, tick):
             t0 = time.time()
             try:
                 done = exporters.export_pdf_batch(doc, folder, chunk, chunk_names, fcfg)
-            except Exception:
+            except Exception as ex:
+                exporters.UNSUPPORTED.add("PDF batch failed ({0}), sheets were exported one "
+                                          "by one".format(ex))
                 done = {}
             per = (time.time() - t0) / max(len(done), 1)
             for idx, item in enumerate(chunk):
@@ -162,9 +166,9 @@ def _run_pdf_batches(doc, folder, items, names, fcfg, results, tick):
                         return [], True
                 else:
                     leftovers.append(item)
-    if leftovers and len(leftovers) < len(items):
-        exporters.UNSUPPORTED.add(
-            "PDF batch: {0} item(s) exported one by one instead".format(len(leftovers)))
+    n_batched = len(items) - len(leftovers)
+    exporters.UNSUPPORTED.add("PDF batch: {0} sheet(s) batched, {1} item(s) one by one".format(
+        n_batched, len(leftovers)))
     return leftovers, False
 
 

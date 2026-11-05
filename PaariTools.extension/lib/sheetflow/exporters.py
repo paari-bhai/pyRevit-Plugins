@@ -365,6 +365,13 @@ def export_pdf_batch(doc, folder, items, names, cfg):
                 done[idx] = target
             except Exception:
                 continue
+        if produced and not done:
+            sample = ", ".join(sorted(os.path.basename(p) for p in produced.values())[:3])
+            UNSUPPORTED.add("PDF batch: Revit's file names didn't match sheet numbers "
+                            "(got e.g. {0}), so sheets were redone one by one".format(sample))
+        elif not produced:
+            UNSUPPORTED.add("PDF batch: Revit wrote no files in batch mode, so sheets were "
+                            "exported one by one")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return done
