@@ -251,6 +251,8 @@
                                                     <TextBox x:Name="tb_pdf_combined_name" Width="200"/>
                                                 </StackPanel>
                                                 <TextBlock Text="Combined files follow the order on the Selection tab (click a column header to sort)." TextWrapping="Wrap" Foreground="#5F6670" Margin="18,2,0,0"/>
+                                                <CheckBox x:Name="chk_pdf_batch" Content="Fast batch export for separate sheet files" Margin="2,8,2,2"
+                                                          ToolTip="Exports up to 20 sheets per Revit call instead of one call per sheet, then renames the files. Turn off to compare speed."/>
                                             </StackPanel>
                                         </GroupBox>
                                     </StackPanel>

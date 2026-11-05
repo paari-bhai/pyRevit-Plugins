@@ -34,6 +34,7 @@ DEFAULTS = {
         "mask_coincident": False,
         "combine": False,
         "combined_name": "{Project Number}-Combined",
+        "batch": True,                  # export sheets in batches (faster), then rename
     },
     "dwg": {
         "setup": "<In-session>",

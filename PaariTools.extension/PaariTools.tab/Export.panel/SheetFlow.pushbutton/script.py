@@ -4,6 +4,7 @@ __title__ = "SheetFlow"
 __author__ = "paari-bhai"
 
 import os
+import time
 
 from pyrevit import forms, revit, script
 
@@ -224,6 +225,9 @@ class SheetFlowWindow(forms.WPFWindow):
         self.rb_pdf_separate.IsChecked = not p["combine"]
         self.rb_pdf_combine.IsChecked = p["combine"]
         self.tb_pdf_combined_name.Text = p["combined_name"]
+        self.chk_pdf_batch.IsChecked = p.get("batch", True)
+        if not exporters.pdf_batch_supported():
+            self.chk_pdf_batch.IsEnabled = False
 
         d = cfg["dwg"]
         fill(self.cb_dwg_setup, list(self.cb_dwg_setup.Items), d["setup"])
@@ -314,6 +318,7 @@ class SheetFlowWindow(forms.WPFWindow):
             "halftone_thin": b(self.chk_pdf_halftone),
             "mask_coincident": b(self.chk_pdf_mask),
             "combine": b(self.rb_pdf_combine),
+            "batch": b(self.chk_pdf_batch),
             "combined_name": self.tb_pdf_combined_name.Text or "{Model Name}-Combined",
         })
         cfg["dwg"].update({
@@ -618,6 +623,7 @@ class SheetFlowWindow(forms.WPFWindow):
             self.do_events()
             return not self._cancel
 
+        t_start = time.time()
         try:
             results, cancelled = runner.run(doc, items, cfg, progress)
         except Exception as ex:
@@ -638,8 +644,10 @@ class SheetFlowWindow(forms.WPFWindow):
                 report_path = runner.write_report(cfg, results)
             except Exception as ex:
                 logger.warning("Could not write report: {0}".format(ex))
-        summary = "{0}{1} done, {2} skipped, {3} failed.".format(
-            "Stopped. " if cancelled else "", ok, skipped, failed)
+        elapsed = time.time() - t_start
+        summary = "{0}{1} done, {2} skipped, {3} failed in {4}m {5:02d}s.".format(
+            "Stopped. " if cancelled else "", ok, skipped, failed,
+            int(elapsed // 60), int(elapsed % 60))
         self.tb_progress.Text = summary
         if failed or skipped:
             for r in results:

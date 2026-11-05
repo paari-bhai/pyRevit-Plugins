@@ -3,18 +3,20 @@
 import datetime
 import io
 import os
+import time
 
 from sheetflow import exporters, naming
 from sheetflow.settings import FORMATS
 
 
 class Result(object):
-    def __init__(self, item, fmt, ok, message, paths=None):
+    def __init__(self, item, fmt, ok, message, paths=None, seconds=0.0):
         self.item = item
         self.fmt = fmt
         self.ok = ok
         self.message = message
         self.paths = paths or []
+        self.seconds = seconds
 
 
 def output_folder(cfg, fmt):
@@ -88,23 +90,82 @@ def run(doc, items, cfg, progress=None):
             continue
 
         fn = exporters.PER_ITEM[fmt]
+        names = {}
         for item in items:
             try:
                 ext = exporters.EXTENSIONS.get(fmt, "")
                 name = naming.fit_path(folder, naming.file_name_for(item, sheet_t, view_t), ext)
-                name = naming.unique_name(name, used)
+                names[id(item)] = naming.unique_name(name, used)
+            except Exception as ex:
+                names[id(item)] = ex
+
+        pending = list(items)
+        if fmt == "PDF" and fcfg.get("batch", True) and exporters.pdf_batch_supported():
+            pending, cancelled = _run_pdf_batches(doc, folder, items, names, fcfg, results, tick)
+            if cancelled:
+                return results, True
+
+        for item in pending:
+            started = time.time()
+            try:
+                name = names[id(item)]
+                if isinstance(name, Exception):
+                    raise name
                 paths = fn(doc, folder, item, name, fcfg)
-                results.append(Result(item, fmt, True, "Done", paths))
-                status = "Done"
+                secs = time.time() - started
+                results.append(Result(item, fmt, True, "Done", paths, secs))
+                status = "Done ({0:.1f}s)".format(secs)
             except exporters.ExportSkipped as ex:
                 results.append(Result(item, fmt, False, "Skipped: {0}".format(ex)))
                 status = "Skipped"
             except Exception as ex:
-                results.append(Result(item, fmt, False, "Failed: {0}".format(ex)))
+                results.append(Result(item, fmt, False, "Failed: {0}".format(ex),
+                                      seconds=time.time() - started))
                 status = "Failed"
             if not tick(item, fmt, status):
                 return results, True
     return results, False
+
+
+def _run_pdf_batches(doc, folder, items, names, fcfg, results, tick):
+    """Export sheets in batches grouped by paper settings.
+
+    Returns (items still to export one by one, cancelled).
+    """
+    leftovers = [i for i in items if not i.is_sheet or isinstance(names[id(i)], Exception)]
+    groups = {}
+    order = []
+    for i in items:
+        if i in leftovers:
+            continue
+        key = (i.paper_size, i.paper_orientation)
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(i)
+
+    for key in order:
+        group = groups[key]
+        for start in range(0, len(group), exporters.PDF_BATCH_SIZE):
+            chunk = group[start:start + exporters.PDF_BATCH_SIZE]
+            chunk_names = [names[id(i)] for i in chunk]
+            t0 = time.time()
+            try:
+                done = exporters.export_pdf_batch(doc, folder, chunk, chunk_names, fcfg)
+            except Exception:
+                done = {}
+            per = (time.time() - t0) / max(len(done), 1)
+            for idx, item in enumerate(chunk):
+                if idx in done:
+                    results.append(Result(item, "PDF", True, "Done", [done[idx]], per))
+                    if not tick(item, "PDF", "Done ({0:.1f}s, batched)".format(per)):
+                        return [], True
+                else:
+                    leftovers.append(item)
+    if leftovers and len(leftovers) < len(items):
+        exporters.UNSUPPORTED.add(
+            "PDF batch: {0} item(s) exported one by one instead".format(len(leftovers)))
+    return leftovers, False
 
 
 def write_report(cfg, results):
@@ -117,10 +178,10 @@ def write_report(cfg, results):
             v = u'"' + v.replace(u'"', u'""') + u'"'
         return v
 
-    rows = [["Type", "Number", "Name", "Revision", "Format", "Result", "Files"]]
+    rows = [["Type", "Number", "Name", "Revision", "Format", "Result", "Seconds", "Files"]]
     for r in results:
         rows.append([r.item.kind, r.item.number, r.item.name, r.item.revision, r.fmt,
-                     r.message, "; ".join(r.paths)])
+                     r.message, "{0:.1f}".format(r.seconds), "; ".join(r.paths)])
     # utf-8 with BOM so Excel shows non-ASCII sheet names correctly
     with io.open(path, "w", encoding="utf-8-sig", newline="") as f:
         for row in rows:
