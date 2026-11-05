@@ -1,0 +1,499 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SheetFlow - Batch Export"
+        Width="1180" Height="860" MinWidth="980" MinHeight="680"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="True"
+        FontFamily="Segoe UI" FontSize="12" Background="#F4F5F7">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Accent" Color="#1F7A8C"/>
+        <SolidColorBrush x:Key="AccentLight" Color="#D9EEF2"/>
+        <Style TargetType="GroupBox">
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="BorderBrush" Value="#C9CDD3"/>
+            <Setter Property="Background" Value="White"/>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Margin" Value="2,4"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style TargetType="RadioButton">
+            <Setter Property="Margin" Value="2,4"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Margin" Value="2,3"/>
+            <Setter Property="MinWidth" Value="140"/>
+            <Setter Property="Height" Value="24"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Margin" Value="2,3"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Margin" Value="3"/>
+            <Setter Property="Padding" Value="10,3"/>
+            <Setter Property="MinHeight" Value="26"/>
+        </Style>
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource Accent}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="MinWidth" Value="96"/>
+        </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#E3E5E8"/>
+            <Setter Property="RowHeight" Value="24"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="AlternatingRowBackground" Value="#FAFBFC"/>
+            <Setter Property="SelectionMode" Value="Extended"/>
+            <Setter Property="EnableRowVirtualization" Value="True"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel LastChildFill="True">
+        <!-- Header -->
+        <Border DockPanel.Dock="Top" Background="White" BorderBrush="#DADDE1" BorderThickness="0,0,0,1" Padding="10,6">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <TextBlock Text="SheetFlow" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
+                    <TextBlock x:Name="tb_model" Margin="14,0,0,0" VerticalAlignment="Center" Foreground="#5F6670"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Text="Profile" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox x:Name="cb_profile" Width="180"/>
+                    <Button x:Name="btn_profile_load" Content="Load" ToolTip="Load the selected profile"/>
+                    <Button x:Name="btn_profile_save" Content="Save as..." ToolTip="Save the current settings as a profile"/>
+                    <Button x:Name="btn_profile_delete" Content="Delete" ToolTip="Delete the selected profile"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Footer -->
+        <Border DockPanel.Dock="Bottom" Background="White" BorderBrush="#DADDE1" BorderThickness="0,1,0,0" Padding="10,6">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button x:Name="btn_back" Content="Back" MinWidth="90"/>
+                    <Button x:Name="btn_next" Content="Next" MinWidth="90"/>
+                    <Button x:Name="btn_create" Content="Create" Style="{StaticResource PrimaryButton}"/>
+                    <Button x:Name="btn_cancel" Content="Stop" MinWidth="90" Visibility="Collapsed"/>
+                </StackPanel>
+                <TextBlock x:Name="tb_status" VerticalAlignment="Center" Foreground="#3C4148"/>
+            </DockPanel>
+        </Border>
+
+        <TabControl x:Name="tabs" Margin="8" Padding="6">
+            <!-- ============================== SELECTION ============================== -->
+            <TabItem Header="  Selection  ">
+                <DockPanel>
+                    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6" VerticalAlignment="Center">
+                        <RadioButton x:Name="rb_sheets" Content="Sheets" GroupName="mode" IsChecked="True"/>
+                        <RadioButton x:Name="rb_views" Content="Views" GroupName="mode" Margin="10,4,16,4"/>
+                        <TextBlock Text="View/Sheet Set" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="cb_vsset" Width="220"/>
+                        <Button x:Name="btn_save_vsset" Content="Save V/S Set..." ToolTip="Save the checked items as a Revit View/Sheet Set"/>
+                        <TextBlock Text="Search" VerticalAlignment="Center" Margin="16,0,6,0"/>
+                        <TextBox x:Name="tb_search" Width="240" ToolTip="Filter by number, name or revision"/>
+                    </WrapPanel>
+                    <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                            <Button x:Name="btn_check_all" Content="Check all"/>
+                            <Button x:Name="btn_check_none" Content="Uncheck all"/>
+                            <Button x:Name="btn_check_selected" Content="Check highlighted"/>
+                            <Button x:Name="btn_fill_names" Content="Fill custom names from template" ToolTip="Write the naming template result into the Custom File Name column so you can tweak it per row"/>
+                            <Button x:Name="btn_clear_names" Content="Clear custom names"/>
+                        </StackPanel>
+                        <CheckBox x:Name="chk_only_checked" Content="Show only checked" HorizontalAlignment="Right"/>
+                    </DockPanel>
+                    <DataGrid x:Name="dg_items">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Width="36" CanUserSort="False">
+                                <DataGridTemplateColumn.Header>
+                                    <CheckBox Click="header_check_clicked" ToolTip="Check / uncheck all visible"/>
+                                </DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding checked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  HorizontalAlignment="Center" Click="item_check_clicked"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Number / Type" Binding="{Binding number}" IsReadOnly="True" Width="170"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding name}" IsReadOnly="True" Width="2*"/>
+                            <DataGridTextColumn Header="Revision" Binding="{Binding revision}" IsReadOnly="True" Width="75"/>
+                            <DataGridTextColumn Header="Rev Date" Binding="{Binding rev_date}" IsReadOnly="True" Width="90"/>
+                            <DataGridTextColumn Header="Size" Binding="{Binding size}" IsReadOnly="True" Width="70"/>
+                            <DataGridTextColumn Header="Orientation" Binding="{Binding orientation}" IsReadOnly="True" Width="85"/>
+                            <DataGridTextColumn Header="Custom File Name (blank = template)" Binding="{Binding custom_name, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Width="2*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ============================== FORMAT ============================== -->
+            <TabItem Header="  Format  ">
+                <DockPanel>
+                    <GroupBox DockPanel.Dock="Bottom" Header="File naming (all formats)">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="Sheets" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox x:Name="tb_sheet_template" Grid.Column="1"/>
+                            <TextBlock Text="Views" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox x:Name="tb_view_template" Grid.Row="1" Grid.Column="1"/>
+                            <ComboBox x:Name="cb_tokens" Grid.Column="2" Width="220" IsEditable="True" ToolTip="Pick a parameter, then insert it into a template"/>
+                            <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                <Button x:Name="btn_token_sheet" Content="Insert in Sheets"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="3" Orientation="Horizontal">
+                                <Button x:Name="btn_token_view" Content="Insert in Views"/>
+                            </StackPanel>
+                            <TextBlock x:Name="tb_name_preview" Grid.Row="2" Grid.ColumnSpan="4" Foreground="#5F6670" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                    </GroupBox>
+
+                    <TabControl x:Name="fmt_tabs" Padding="6">
+                        <!-- PDF -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal"><CheckBox x:Name="en_pdf"/><TextBlock Text="PDF" FontWeight="SemiBold" Margin="4,0"/></StackPanel>
+                            </TabItem.Header>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <GroupBox Header="Paper Placement">
+                                            <StackPanel>
+                                                <RadioButton x:Name="rb_pdf_center" Content="Centre" GroupName="pdfplace"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <RadioButton x:Name="rb_pdf_offset" Content="Offset from corner" GroupName="pdfplace"/>
+                                                    <ComboBox x:Name="cb_pdf_margin" Width="130" Margin="8,3,0,3"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="X (mm)" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="tb_pdf_offx" Width="60"/>
+                                                    <TextBlock Text="Y (mm)" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                    <TextBox x:Name="tb_pdf_offy" Width="60"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </GroupBox>
+                                        <GroupBox Header="Zoom">
+                                            <StackPanel>
+                                                <RadioButton x:Name="rb_pdf_fit" Content="Fit to Page" GroupName="pdfzoom"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <RadioButton x:Name="rb_pdf_zoom" Content="Zoom" GroupName="pdfzoom"/>
+                                                    <TextBox x:Name="tb_pdf_zoom" Width="50" Margin="8,3,2,3"/>
+                                                    <TextBlock Text="%" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </GroupBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <GroupBox Header="Hidden Line Views">
+                                            <StackPanel>
+                                                <TextBlock Text="Remove lines using" Margin="2,2,2,4"/>
+                                                <RadioButton x:Name="rb_pdf_vector" Content="Vector Processing" GroupName="pdfhl"/>
+                                                <RadioButton x:Name="rb_pdf_raster" Content="Raster Processing" GroupName="pdfhl"/>
+                                            </StackPanel>
+                                        </GroupBox>
+                                        <GroupBox Header="Appearance">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                                <TextBlock Text="Raster Quality" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <ComboBox x:Name="cb_pdf_rq" Grid.Column="1"/>
+                                                <TextBlock Text="Colours" Grid.Row="1" VerticalAlignment="Center"/>
+                                                <ComboBox x:Name="cb_pdf_colors" Grid.Row="1" Grid.Column="1"/>
+                                                <TextBlock Text="Export Quality" Grid.Row="2" VerticalAlignment="Center"/>
+                                                <ComboBox x:Name="cb_pdf_dpi" Grid.Row="2" Grid.Column="1"/>
+                                                <CheckBox x:Name="chk_pdf_always_raster" Content="Always use raster" Grid.Row="3" Grid.ColumnSpan="2"/>
+                                            </Grid>
+                                        </GroupBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <GroupBox Header="Options">
+                                            <StackPanel>
+                                                <CheckBox x:Name="chk_pdf_links_blue" Content="View links in blue (colour prints only)"/>
+                                                <CheckBox x:Name="chk_pdf_hide_ref" Content="Hide ref/work planes"/>
+                                                <CheckBox x:Name="chk_pdf_hide_tags" Content="Hide unreferenced view tags"/>
+                                                <CheckBox x:Name="chk_pdf_hide_scope" Content="Hide scope boxes"/>
+                                                <CheckBox x:Name="chk_pdf_hide_crop" Content="Hide crop boundaries"/>
+                                                <CheckBox x:Name="chk_pdf_halftone" Content="Replace halftone with thin lines"/>
+                                                <CheckBox x:Name="chk_pdf_mask" Content="Region edges mask coincident lines"/>
+                                            </StackPanel>
+                                        </GroupBox>
+                                        <GroupBox Header="File">
+                                            <StackPanel>
+                                                <RadioButton x:Name="rb_pdf_separate" Content="Create separate files" GroupName="pdffile"/>
+                                                <RadioButton x:Name="rb_pdf_combine" Content="Combine views/sheets into a single file" GroupName="pdffile"/>
+                                                <StackPanel Orientation="Horizontal" Margin="18,2,0,0">
+                                                    <TextBlock Text="Combined name" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="tb_pdf_combined_name" Width="200"/>
+                                                </StackPanel>
+                                                <TextBlock Text="Combined files follow the order on the Selection tab (click a column header to sort)." TextWrapping="Wrap" Foreground="#5F6670" Margin="18,2,0,0"/>
+                                            </StackPanel>
+                                        </GroupBox>
+                                    </StackPanel>
+                                </Grid>
+                            </ScrollViewer>
+                        </TabItem>
+
+                        <!-- DWG -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal"><CheckBox x:Name="en_dwg"/><TextBlock Text="DWG" FontWeight="SemiBold" Margin="4,0"/></StackPanel>
+                            </TabItem.Header>
+                            <StackPanel>
+                                <GroupBox Header="DWG settings">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="300"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                        <TextBlock Text="Export setup" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <ComboBox x:Name="cb_dwg_setup" Grid.Column="1"/>
+                                        <TextBlock Grid.Column="2" Margin="8,0" VerticalAlignment="Center" Foreground="#5F6670" Text="A saved setup controls layers, colours and units."/>
+                                        <TextBlock Text="AutoCAD version" Grid.Row="1" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="cb_dwg_version" Grid.Row="1" Grid.Column="1"/>
+                                    </Grid>
+                                </GroupBox>
+                                <GroupBox Header="Options">
+                                    <StackPanel>
+                                        <CheckBox x:Name="chk_dwg_xref" Content="Export views on sheets as external references"/>
+                                        <CheckBox x:Name="chk_dwg_shared" Content="Use shared coordinates (in-session setup only)"/>
+                                        <CheckBox x:Name="chk_dwg_hide_ref" Content="Hide ref/work planes (in-session setup only)"/>
+                                        <CheckBox x:Name="chk_dwg_hide_scope" Content="Hide scope boxes (in-session setup only)"/>
+                                        <CheckBox x:Name="chk_dwg_hide_tags" Content="Hide unreferenced view tags (in-session setup only)"/>
+                                    </StackPanel>
+                                </GroupBox>
+                            </StackPanel>
+                        </TabItem>
+
+                        <!-- DGN -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal"><CheckBox x:Name="en_dgn"/><TextBlock Text="DGN" FontWeight="SemiBold" Margin="4,0"/></StackPanel>
+                            </TabItem.Header>
+                            <StackPanel>
+                                <GroupBox Header="DGN settings">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Export setup" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <ComboBox x:Name="cb_dgn_setup" Width="300"/>
+                                    </StackPanel>
+                                </GroupBox>
+                                <GroupBox Header="Options">
+                                    <StackPanel>
+                                        <CheckBox x:Name="chk_dgn_xref" Content="Export views on sheets as references"/>
+                                        <CheckBox x:Name="chk_dgn_shared" Content="Use shared coordinates (in-session setup only)"/>
+                                        <CheckBox x:Name="chk_dgn_hide_ref" Content="Hide ref/work planes (in-session setup only)"/>
+                                        <CheckBox x:Name="chk_dgn_hide_scope" Content="Hide scope boxes (in-session setup only)"/>
+                                        <CheckBox x:Name="chk_dgn_hide_tags" Content="Hide unreferenced view tags (in-session setup only)"/>
+                                    </StackPanel>
+                                </GroupBox>
+                            </StackPanel>
+                        </TabItem>
+
+                        <!-- DWF -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal"><CheckBox x:Name="en_dwf"/><TextBlock Text="DWF" FontWeight="SemiBold" Margin="4,0"/></StackPanel>
+                            </TabItem.Header>
+                            <StackPanel>
+                                <GroupBox Header="DWF settings">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="200"/></Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                        <TextBlock Text="Image quality" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <ComboBox x:Name="cb_dwf_quality" Grid.Column="1"/>
+                                        <TextBlock Text="Image format" Grid.Row="1" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="cb_dwf_format" Grid.Row="1" Grid.Column="1"/>
+                                    </Grid>
+                                </GroupBox>
+                                <GroupBox Header="Options">
+                                    <StackPanel>
+                                        <CheckBox x:Name="chk_dwf_dwfx" Content="Export as DWFx"/>
+                                        <CheckBox x:Name="chk_dwf_combine" Content="Combine into a single file (uses the PDF combined name)"/>
+                                        <CheckBox x:Name="chk_dwf_objdata" Content="Export element properties"/>
+                                        <CheckBox x:Name="chk_dwf_hide_crop" Content="Hide crop boundaries"/>
+                                    </StackPanel>
+                                </GroupBox>
+                            </StackPanel>
+                        </TabItem>
+
+                        <!-- NWC -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal"><CheckBox x:Name="en_nwc"/><TextBlock Text="NWC" FontWeight="SemiBold" Margin="4,0"/></StackPanel>
+                            </TabItem.Header>
+                            <StackPanel>
+                                <TextBlock x:Name="tb_nwc_note" Margin="6" TextWrapping="Wrap" Foreground="#5F6670"
+                                           Text="NWC exports 3D views only. Switch to Views on the Selection tab and check the 3D views to export. Needs the free Navisworks NWC exporter for your Revit version."/>
+                                <GroupBox Header="NWC settings">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="200"/></Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                        <TextBlock Text="Coordinates" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <ComboBox x:Name="cb_nwc_coords" Grid.Column="1"/>
+                                        <TextBlock Text="Parameters" Grid.Row="1" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="cb_nwc_params" Grid.Row="1" Grid.Column="1"/>
+                                    </Grid>
+                                </GroupBox>
+                                <GroupBox Header="Options">
+                                    <StackPanel>
+                                        <CheckBox x:Name="chk_nwc_links" Content="Export links"/>
+                                        <CheckBox x:Name="chk_nwc_parts" Content="Export parts"/>
+                                        <CheckBox x:Name="chk_nwc_props" Content="Convert element properties"/>
+                                        <CheckBox x:Name="chk_nwc_rooms" Content="Export room geometry"/>
+                                        <CheckBox x:Name="chk_nwc_levels" Content="Divide file into levels"/>
+                                        <CheckBox x:Name="chk_nwc_urls" Content="Export URLs"/>
+                                        <CheckBox x:Name="chk_nwc_ids" Content="Export element IDs"/>
+                                        <CheckBox x:Name="chk_nwc_materials" Content="Try and find missing materials"/>
+                                    </StackPanel>
+                                </GroupBox>
+                            </StackPanel>
+                        </TabItem>
+
+                        <!-- IFC -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal"><CheckBox x:Name="en_ifc"/><TextBlock Text="IFC" FontWeight="SemiBold" Margin="4,0"/></StackPanel>
+                            </TabItem.Header>
+                            <StackPanel>
+                                <TextBlock Margin="6" TextWrapping="Wrap" Foreground="#5F6670"
+                                           Text="IFC exports views (not sheets). Each checked view becomes one IFC file."/>
+                                <GroupBox Header="IFC settings">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="220"/></Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                        <TextBlock Text="IFC version" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <ComboBox x:Name="cb_ifc_version" Grid.Column="1"/>
+                                        <TextBlock Text="Space boundaries" Grid.Row="1" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="cb_ifc_space" Grid.Row="1" Grid.Column="1"/>
+                                    </Grid>
+                                </GroupBox>
+                                <GroupBox Header="Options">
+                                    <StackPanel>
+                                        <CheckBox x:Name="chk_ifc_view_only" Content="Export only elements visible in the view"/>
+                                        <CheckBox x:Name="chk_ifc_quantities" Content="Export base quantities"/>
+                                        <CheckBox x:Name="chk_ifc_split" Content="Split walls and columns by level"/>
+                                        <CheckBox x:Name="chk_ifc_links" Content="Export linked files"/>
+                                    </StackPanel>
+                                </GroupBox>
+                            </StackPanel>
+                        </TabItem>
+
+                        <!-- IMG -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal"><CheckBox x:Name="en_img"/><TextBlock Text="IMG" FontWeight="SemiBold" Margin="4,0"/></StackPanel>
+                            </TabItem.Header>
+                            <GroupBox Header="Image settings" VerticalAlignment="Top">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="200"/></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                    <TextBlock Text="File type" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <ComboBox x:Name="cb_img_type" Grid.Column="1"/>
+                                    <TextBlock Text="Resolution" Grid.Row="1" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="cb_img_res" Grid.Row="1" Grid.Column="1"/>
+                                    <TextBlock Text="Size (pixels)" Grid.Row="2" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="tb_img_px" Grid.Row="2" Grid.Column="1"/>
+                                    <TextBlock Text="Fit direction" Grid.Row="3" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="cb_img_fit" Grid.Row="3" Grid.Column="1"/>
+                                </Grid>
+                            </GroupBox>
+                        </TabItem>
+
+                        <!-- XML -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal"><CheckBox x:Name="en_xml"/><TextBlock Text="XML" FontWeight="SemiBold" Margin="4,0"/></StackPanel>
+                            </TabItem.Header>
+                            <GroupBox Header="XML settings" VerticalAlignment="Top">
+                                <StackPanel>
+                                    <TextBlock TextWrapping="Wrap" Foreground="#5F6670" Margin="2,2,2,6"
+                                               Text="Writes one XML file listing every checked sheet/view with its number, name, revision and size."/>
+                                    <CheckBox x:Name="chk_xml_params" Content="Include all parameters of each sheet/view"/>
+                                </StackPanel>
+                            </GroupBox>
+                        </TabItem>
+                    </TabControl>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ============================== CREATE ============================== -->
+            <TabItem Header="  Create  ">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3*"/>
+                            <ColumnDefinition Width="2*"/>
+                        </Grid.ColumnDefinitions>
+                        <GroupBox Header="Export rules">
+                            <StackPanel>
+                                <DockPanel>
+                                    <TextBlock Text="Folder" VerticalAlignment="Center" Margin="0,0,8,0" DockPanel.Dock="Left"/>
+                                    <Button x:Name="btn_browse" Content="..." DockPanel.Dock="Right" MinWidth="30"/>
+                                    <TextBox x:Name="tb_folder" ToolTip="Supports environment variables, e.g. %USERPROFILE%\Desktop\Exports"/>
+                                </DockPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="rb_same_folder" Content="Save all files in the same folder" GroupName="split"/>
+                                    <RadioButton x:Name="rb_split_folder" Content="Save and split files by format" GroupName="split" Margin="16,4,2,4"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Report" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <ComboBox x:Name="cb_report" Width="170"/>
+                                    <CheckBox x:Name="chk_open_folder" Content="Open folder when done" Margin="16,4,2,4"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+                        <GroupBox Header="Progress" Grid.Column="1">
+                            <StackPanel>
+                                <TextBlock x:Name="tb_progress" Text="Ready"/>
+                                <ProgressBar x:Name="pb_progress" Height="18" Margin="0,6" Minimum="0" Maximum="100" Foreground="{StaticResource Accent}"/>
+                                <TextBlock x:Name="tb_progress_detail" Foreground="#5F6670" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </GroupBox>
+                    </Grid>
+                    <WrapPanel DockPanel.Dock="Top" Margin="4,4,4,6">
+                        <TextBlock Text="Paper size" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="cb_set_size" Width="110"/>
+                        <TextBlock Text="Orientation" VerticalAlignment="Center" Margin="12,0,6,0"/>
+                        <ComboBox x:Name="cb_set_orient" Width="110"/>
+                        <Button x:Name="btn_apply_paper" Content="Apply to highlighted rows (all if none)"/>
+                        <TextBlock Text="Auto uses the title block size. Applies to PDF and DWF." VerticalAlignment="Center" Margin="10,0" Foreground="#5F6670"/>
+                    </WrapPanel>
+                    <DataGrid x:Name="dg_create" IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Type" Binding="{Binding kind}" Width="55"/>
+                            <DataGridTextColumn Header="Number / Type" Binding="{Binding number}" Width="160"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding name}" Width="2*"/>
+                            <DataGridTextColumn Header="Formats" Binding="{Binding formats}" Width="140"/>
+                            <DataGridTextColumn Header="Detected" Binding="{Binding detected_size}" Width="75"/>
+                            <DataGridTextColumn Header="Paper Size" Binding="{Binding paper_size}" Width="80"/>
+                            <DataGridTextColumn Header="Orientation" Binding="{Binding paper_orientation}" Width="85"/>
+                            <DataGridTextColumn Header="Progress" Binding="{Binding status}" Width="2*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

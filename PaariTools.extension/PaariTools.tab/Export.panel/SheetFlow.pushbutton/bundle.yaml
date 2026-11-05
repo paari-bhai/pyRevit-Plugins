@@ -1,0 +1,6 @@
+title: SheetFlow
+tooltip: >-
+  Batch export sheets and views to PDF, DWG, DGN, DWF, NWC, IFC, images and XML,
+  with custom file names, View/Sheet Set filtering, per-sheet paper size and
+  saved profiles. Uses Revit's native exporters (PDF needs Revit 2022+).
+author: paari-bhai
