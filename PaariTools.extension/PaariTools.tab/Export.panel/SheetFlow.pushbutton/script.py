@@ -15,6 +15,7 @@ from System.Windows.Threading import DispatcherPriority
 from Autodesk.Revit.DB import PrintRange, ViewSet
 
 from sheetflow import collect, exporters, naming, runner, settings
+from modelhealth import core as health
 from sheetflow.settings import FORMATS
 
 doc = revit.doc
@@ -290,6 +291,7 @@ class SheetFlowWindow(forms.WPFWindow):
         self.rb_same_folder.IsChecked = not cr["split_by_format"]
         fill(self.cb_report, REPORTS, cr["report"])
         self.chk_open_folder.IsChecked = cr["open_folder"]
+        self.chk_unload_links.IsChecked = cr.get("unload_hidden_links", False)
 
     def gather_cfg(self):
         cfg = settings.load_profile()  # defaults + last used, then overwrite from the UI
@@ -380,6 +382,7 @@ class SheetFlowWindow(forms.WPFWindow):
             "split_by_format": b(self.rb_split_folder),
             "report": self.cb_report.SelectedItem or "None",
             "open_folder": b(self.chk_open_folder),
+            "unload_hidden_links": b(self.chk_unload_links),
         })
         return cfg
 
@@ -624,13 +627,27 @@ class SheetFlowWindow(forms.WPFWindow):
             return not self._cancel
 
         t_start = time.time()
+        unloaded = []
+        link_note = ""
         try:
+            if cfg["create"].get("unload_hidden_links"):
+                unloaded = self.unload_hidden_links(items)
+                if unloaded:
+                    link_note = "\nSpeed mode unloaded {0} link(s) during export.".format(
+                        len(unloaded))
             results, cancelled = runner.run(doc, items, cfg, progress)
         except Exception as ex:
             logger.exception("Export failed")
             forms.alert("Export stopped with an error:\n{0}".format(ex))
             results, cancelled = [], True
         finally:
+            if unloaded:
+                self.tb_progress.Text = "Reloading {0} link(s)...".format(len(unloaded))
+                self.do_events()
+                failed_links = health.restore_links(unloaded)
+                if failed_links:
+                    link_note += "\nCould not reload: {0}. Reload them in Manage Links.".format(
+                        ", ".join(failed_links))
             self._busy = False
             self.btn_cancel.Visibility = Visibility.Collapsed
             self.update_nav()
@@ -654,6 +671,7 @@ class SheetFlowWindow(forms.WPFWindow):
                 if not r.ok:
                     logger.warning(u"{0} {1} {2}: {3}".format(
                         r.fmt, r.item.number, r.item.name, r.message))
+        summary += link_note
         if exporters.UNSUPPORTED:
             notes = sorted(exporters.UNSUPPORTED)
             for n in notes:
@@ -672,6 +690,19 @@ class SheetFlowWindow(forms.WPFWindow):
             except Exception:
                 pass
         forms.alert(summary, title="SheetFlow")
+
+    def unload_hidden_links(self, items):
+        view_ids = []
+        for i in items:
+            view_ids.append(i.id)
+            if i.is_sheet:
+                view_ids.extend(list(i.element.GetAllPlacedViews()))
+        hidden = health.links_not_visible(doc, view_ids)
+        if not hidden:
+            return []
+        self.tb_progress.Text = "Unloading {0} link(s) not on these sheets...".format(len(hidden))
+        self.do_events()
+        return health.unload_links(doc, hidden)
 
     # ------------------------------------------------------------------ profiles
     def refresh_profiles(self, selected=None):
