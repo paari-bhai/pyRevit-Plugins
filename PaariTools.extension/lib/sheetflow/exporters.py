@@ -14,6 +14,8 @@ records) anything the running Revit version doesn't have instead of failing.
 import datetime
 import io
 import os
+import re
+import shutil
 import time
 
 from System.Collections.Generic import List
@@ -286,6 +288,86 @@ def export_pdf_combined(doc, folder, items, name, cfg):
     path = os.path.join(folder, name + ".pdf")
     run_export(lambda: doc.Export(folder, _ids(items), o), path)
     return [path]
+
+
+# --------------------------------------------------------------------------- PDF batch
+# Exporting many sheets in one Revit call (Combine = False) avoids Revit setting
+# up the PDF engine again for every sheet. Revit names those files itself, so we
+# name them by sheet number (unique per model), then rename each to the file
+# name the user asked for. Anything we can't match falls back to one-by-one.
+PDF_BATCH_SIZE = 20
+
+
+def pdf_batch_supported():
+    return (pdf_supported() and db_type("TableCellCombinedParameterData") is not None
+            and option_available("PDFExportOptions", "Combine"))
+
+
+def _match_key(text):
+    return re.sub(r"[^0-9a-z]", "", (text or "").lower())
+
+
+def export_pdf_batch(doc, folder, items, names, cfg):
+    """Export sheets in one call. items share paper size/orientation.
+
+    Returns {index in items: final path} for the sheets that came out; the
+    caller exports any missing index one by one.
+    """
+    tmp = os.path.join(folder, "_sheetflow_tmp_{0}".format(int(time.time() * 1000)))
+    os.makedirs(tmp)
+    done = {}
+    try:
+        o, s = _pdf_options(cfg)
+        s.set("Combine", False)
+        s.set("PaperFormat", _paper_format(items[0]))
+        if items[0].paper_orientation != "Auto":
+            s.set("PaperOrientation", _orientation(items[0]))
+        rule = DB.TableCellCombinedParameterData.Create()
+        rule.CategoryId = DB.ElementId(DB.BuiltInCategory.OST_Sheets)
+        rule.ParamId = DB.ElementId(DB.BuiltInParameter.SHEET_NUMBER)
+        rule.Prefix = ""
+        rule.Suffix = ""
+        rule.Separator = ""
+        rules = List[DB.TableCellCombinedParameterData]()
+        rules.Add(rule)
+        o.SetNamingRule(rules)
+
+        if doc.Export(tmp, _ids(items), o) is False:
+            raise ExportFailed("Revit reported the PDF export failed")
+
+        produced = {}
+        clashes = set()
+        for f in os.listdir(tmp):
+            if not f.lower().endswith(".pdf"):
+                continue
+            key = _match_key(os.path.splitext(f)[0])
+            if key in produced:
+                clashes.add(key)
+            produced[key] = os.path.join(tmp, f)
+
+        wanted = {}
+        for idx, item in enumerate(items):
+            key = _match_key(item.number)
+            wanted.setdefault(key, []).append(idx)
+        for key, idxs in wanted.items():
+            if len(idxs) != 1 or key in clashes or key not in produced:
+                continue  # ambiguous or missing: caller exports these one by one
+            idx = idxs[0]
+            src = produced[key]
+            if os.path.getsize(src) == 0:
+                continue
+            target = os.path.join(folder, names[idx] + ".pdf")
+            try:
+                check_writable(target)
+                if os.path.exists(target):
+                    os.remove(target)
+                shutil.move(src, target)
+                done[idx] = target
+            except Exception:
+                continue
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return done
 
 
 # --------------------------------------------------------------------------- DWG / DGN
