@@ -1,0 +1,6 @@
+title: Model Health
+tooltip: >-
+  Scan the model for what makes it slow (warnings, links, CAD imports, unused
+  views, families, images, groups, open views) and clean it up safely. Every
+  delete is listed first and skipped if anything is still using it.
+author: paari-bhai

@@ -96,6 +96,7 @@ DEFAULTS = {
         "split_by_format": False,
         "report": "None",               # None | CSV
         "open_folder": True,
+        "unload_hidden_links": False,   # unload links not visible on exported sheets, reload after
     },
 }
 

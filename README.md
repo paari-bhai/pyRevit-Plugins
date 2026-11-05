@@ -33,6 +33,26 @@ Batch exporter for sheets and views with no export limit. Built for Revit 2022 t
 Settings are remembered between runs. Named profiles live in
 `%APPDATA%\pyRevit\SheetFlow\profiles`.
 
+**Speed mode** (Create tab): temporarily unloads Revit links that don't appear on any
+exported sheet or view, then reloads them when the export finishes. Off by default.
+
+## Model Health (PaariTools → Model → Model Health)
+
+Scans the open model for the usual causes of slowness and shows each as OK / Watch / Fix:
+file size, warnings, loaded and unused Revit links, imported and linked CAD, unused raster
+images, in-place families, views not on sheets, unused view templates, groups, purgeable
+elements (Revit 2024 native purge; unused loadable families on 2022/2023), CAD line
+patterns and open views.
+
+Fixes:
+- **Delete / purge** actions always show the list first so you can untick items. Each item is
+  deleted on its own and rolled back if Revit would delete anything else with it. Profile and
+  detail-item families are never offered, because sweeps, mullions and repeating details use
+  them without placed instances. The whole clean-up is one Ctrl+Z.
+- **Close all but the active view.**
+- **Export warnings** to CSV, grouped by type.
+- **Save and compact** (non-workshared files; for workshared files use Sync with "Compact").
+
 ### Not included yet
 - Exporting sheets from linked models.
 - Scheduled / unattended exports.
