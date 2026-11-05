@@ -15,10 +15,27 @@ COMMON_TOKENS = [
 ]
 
 
+RESERVED = set(["CON", "PRN", "AUX", "NUL"] + ["COM%d" % i for i in range(1, 10)] +
+               ["LPT%d" % i for i in range(1, 10)])
+MAX_PATH = 250  # Windows MAX_PATH is 260 including the extension and terminator
+
+
 def sanitize(name):
     name = INVALID_CHARS_RE.sub("_", name or "")
-    name = name.strip().rstrip(".")
+    name = re.sub(r"\s+", " ", name).strip().rstrip(". ")
+    if name.upper() in RESERVED:
+        name += "_"
     return name or "unnamed"
+
+
+def fit_path(folder, name, ext):
+    """Shorten name so folder/name+ext stays under the Windows path limit."""
+    room = MAX_PATH - len(folder) - 1 - len(ext) - 8  # 8 = room for " (n)" and xref suffixes
+    if room < 10:
+        raise ValueError("Output folder path is too long: {0}".format(folder))
+    if len(name) > room:
+        name = name[:room].rstrip(". ")
+    return name
 
 
 def render(template, item):

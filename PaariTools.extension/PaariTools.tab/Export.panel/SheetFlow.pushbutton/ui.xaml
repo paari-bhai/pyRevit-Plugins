@@ -267,12 +267,16 @@
                                 <GroupBox Header="DWG settings">
                                     <Grid>
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="300"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
                                         <TextBlock Text="Export setup" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                         <ComboBox x:Name="cb_dwg_setup" Grid.Column="1"/>
-                                        <TextBlock Grid.Column="2" Margin="8,0" VerticalAlignment="Center" Foreground="#5F6670" Text="A saved setup controls layers, colours and units."/>
+                                        <TextBlock Grid.Column="2" Margin="8,0" VerticalAlignment="Center" Foreground="#5F6670" Text="A saved setup controls layers, linetypes and units."/>
                                         <TextBlock Text="AutoCAD version" Grid.Row="1" VerticalAlignment="Center"/>
                                         <ComboBox x:Name="cb_dwg_version" Grid.Row="1" Grid.Column="1"/>
+                                        <TextBlock Text="Colours" Grid.Row="2" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="cb_dwg_colors" Grid.Row="2" Grid.Column="1"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="2" Margin="8,0" VerticalAlignment="Center" Foreground="#5F6670" TextWrapping="Wrap"
+                                                   Text="True colour per view keeps the RGB colours you see in the view, including filters and overrides."/>
                                     </Grid>
                                 </GroupBox>
                                 <GroupBox Header="Options">
