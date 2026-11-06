@@ -33,6 +33,12 @@ Batch exporter for sheets and views with no export limit. Built for Revit 2022 t
 Settings are remembered between runs. Named profiles live in
 `%APPDATA%\pyRevit\SheetFlow\profiles`.
 
+**Email notifications** (Create tab → Email notifications...): get an email when an export
+starts (with the estimate), as it progresses (every 25%, every 10% or every sheet) and when it
+finishes, stops or fails, including which sheets failed. Works with Gmail (use an App
+Password), Outlook/Office 365 or any SMTP server. The password is encrypted with Windows DPAPI
+for your Windows account and stays on the PC. Use "Send test email" to check the setup.
+
 **Speed mode** (Create tab): temporarily unloads Revit links that don't appear on any
 exported sheet or view, then reloads them when the export finishes. Off by default.
 

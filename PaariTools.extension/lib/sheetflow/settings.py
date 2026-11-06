@@ -91,6 +91,17 @@ DEFAULTS = {
     "xml": {
         "include_all_params": True,
     },
+    "notify": {
+        "enabled": False,
+        "to": "",
+        "from": "",
+        "username": "",
+        "provider": "Gmail",
+        "smtp_host": "smtp.gmail.com",
+        "smtp_port": 587,
+        "ssl": True,
+        "frequency": "Every 25%",       # Start and finish | Every 25% | Every 10% | Every sheet
+    },
     "create": {
         "folder": "",
         "split_by_format": False,
