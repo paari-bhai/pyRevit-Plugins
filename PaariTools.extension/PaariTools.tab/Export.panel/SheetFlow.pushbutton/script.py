@@ -14,7 +14,7 @@ from System.Windows import Visibility
 from System.Windows.Threading import DispatcherPriority
 from Autodesk.Revit.DB import PrintRange, ViewSet
 
-from sheetflow import collect, exporters, naming, runner, settings
+from sheetflow import collect, eta, exporters, naming, notify, runner, settings
 from modelhealth import core as health
 from sheetflow.settings import FORMATS
 
@@ -22,6 +22,7 @@ doc = revit.doc
 logger = script.get_logger()
 
 XAML = os.path.join(os.path.dirname(__file__), "ui.xaml")
+NOTIFY_XAML = os.path.join(os.path.dirname(__file__), "notify.xaml")
 ALL_SETS = "<All sheets / views>"
 
 PDF_MARGINS = ["NoMargin", "PrinterLimit", "UserDefined"]
@@ -177,6 +178,7 @@ class SheetFlowWindow(forms.WPFWindow):
         self.btn_token_view.Click += lambda s, a: self.insert_token(self.tb_view_template)
 
         self.btn_browse.Click += self.on_browse
+        self.btn_notify.Click += self.on_notify_settings
         self.btn_apply_paper.Click += self.on_apply_paper
 
         self.tabs.SelectionChanged += self.on_tab_changed
@@ -285,6 +287,8 @@ class SheetFlowWindow(forms.WPFWindow):
 
         self.chk_xml_params.IsChecked = cfg["xml"]["include_all_params"]
 
+        self.notify_cfg = dict(cfg["notify"])
+        self.update_notify_status()
         cr = cfg["create"]
         self.tb_folder.Text = cr["folder"]
         self.rb_split_folder.IsChecked = cr["split_by_format"]
@@ -377,6 +381,7 @@ class SheetFlowWindow(forms.WPFWindow):
             "pixel_size": to_int(self.tb_img_px.Text, 4096),
         })
         cfg["xml"]["include_all_params"] = b(self.chk_xml_params)
+        cfg["notify"] = dict(self.notify_cfg)
         cfg["create"].update({
             "folder": self.tb_folder.Text or "",
             "split_by_format": b(self.rb_split_folder),
@@ -543,6 +548,11 @@ class SheetFlowWindow(forms.WPFWindow):
             i.status = ""
         self.dg_create.ItemsSource = items
         self.tb_progress.Text = "Ready: {0} item(s), {1} format(s)".format(len(items), len(enabled))
+        est = eta.Estimator(eta.plan(items, cfg), eta.load_history(), doc.Title)
+        rem = est.remaining()
+        if rem is not None and items and enabled:
+            self.tb_progress.Text += "  -  estimated {0}, based on past exports".format(
+                eta.fmt_duration(rem))
         self.pb_progress.Value = 0
         self.tb_progress_detail.Text = ""
 
@@ -617,15 +627,27 @@ class SheetFlowWindow(forms.WPFWindow):
             else:
                 for i in items:
                     i.status = (i.status + "  " if i.status else "") + "{0}: {1}".format(fmt, text)
+            estimator.mark(fmt, ok=not text.startswith("Skipped"))
             self.pb_progress.Value = 100.0 * step / max(total, 1)
-            self.tb_progress.Text = "Completed {0:.0f}%  ({1} of {2})".format(
-                self.pb_progress.Value, step, total)
-            self.tb_progress_detail.Text = u"{0}  {1}".format(
+            self.tb_progress.Text = "Completed {0:.0f}%  ({1} of {2})  -  {3}".format(
+                self.pb_progress.Value, step, total, estimator.text())
+            label = u"{0}  {1}".format(
                 fmt, (item.number + " - " + item.name) if item else "combined file")
+            self.tb_progress_detail.Text = label
+            notifier.step(step, label, text, estimator.text())
             self.dg_create.Items.Refresh()
             self.do_events()
             return not self._cancel
 
+        history = eta.load_history()
+        estimator = eta.Estimator(eta.plan(items, cfg), history, doc.Title)
+        self.tb_progress.Text = "Exporting...  {0}".format(estimator.text())
+        notifier = notify.ExportNotifier(cfg["notify"], doc.Title, runner.count_steps(items, cfg))
+        rem = estimator.remaining()
+        notifier.started_run(len(items), [f for f in FORMATS if cfg["enabled"].get(f)],
+                             eta.fmt_duration(rem) if rem is not None else "not known yet")
+        crashed = None
+        self.do_events()
         t_start = time.time()
         unloaded = []
         link_note = ""
@@ -635,10 +657,11 @@ class SheetFlowWindow(forms.WPFWindow):
                 if unloaded:
                     link_note = "\nSpeed mode unloaded {0} link(s) during export.".format(
                         len(unloaded))
+            estimator.start()
             results, cancelled = runner.run(doc, items, cfg, progress)
         except Exception as ex:
             logger.exception("Export failed")
-            forms.alert("Export stopped with an error:\n{0}".format(ex))
+            crashed = ex
             results, cancelled = [], True
         finally:
             if unloaded:
@@ -661,6 +684,7 @@ class SheetFlowWindow(forms.WPFWindow):
                 report_path = runner.write_report(cfg, results)
             except Exception as ex:
                 logger.warning("Could not write report: {0}".format(ex))
+        eta.save_history(history, doc.Title, estimator.observed())
         elapsed = time.time() - t_start
         summary = "{0}{1} done, {2} skipped, {3} failed in {4}m {5:02d}s.".format(
             "Stopped. " if cancelled else "", ok, skipped, failed,
@@ -676,7 +700,7 @@ class SheetFlowWindow(forms.WPFWindow):
             notes = sorted(exporters.UNSUPPORTED)
             for n in notes:
                 logger.info(u"Option not available in this Revit version, skipped: {0}".format(n))
-            summary += "\n\nSkipped options this Revit version doesn't support:\n  " + \
+            summary += "\n\nNotes (options this Revit version lacks, batch info):\n  " + \
                 "\n  ".join(notes[:8]) + ("\n  ..." if len(notes) > 8 else "")
         if failed:
             first = [r for r in results if not r.ok and not r.message.startswith("Skipped")][0]
@@ -684,12 +708,39 @@ class SheetFlowWindow(forms.WPFWindow):
                 first.fmt, first.item.number, first.message)
         if report_path:
             summary += "\nReport: {0}".format(report_path)
+        if crashed is not None:
+            summary = "Export stopped with an error:\n{0}\n\n{1}".format(crashed, summary)
+        if notifier.active:
+            notifier.finished(summary, cancelled=cancelled, crashed=crashed)
+            notifier.wait(15)
+            if notifier.errors:
+                summary += "\n\nEmail could not be sent: {0}".format(notifier.errors[0])
+            else:
+                summary += "\n\nStatus emailed to {0}.".format(cfg["notify"]["to"])
         if cfg["create"]["open_folder"] and ok:
             try:
                 os.startfile(folder)
             except Exception:
                 pass
         forms.alert(summary, title="SheetFlow")
+
+    def update_notify_status(self):
+        n = self.notify_cfg
+        if notify.is_configured(n):
+            self.tb_notify_status.Text = u"Email: on, {0} to {1}".format(
+                n.get("frequency", "").lower(), n.get("to"))
+        elif n.get("enabled"):
+            self.tb_notify_status.Text = "Email: on, but not fully set up"
+        else:
+            self.tb_notify_status.Text = "Email: off"
+
+    def on_notify_settings(self, sender, args):
+        dlg = NotifyWindow(self.notify_cfg)
+        dlg.ShowDialog()
+        if dlg.result is not None:
+            self.notify_cfg = dlg.result
+            self.update_notify_status()
+            settings.save_profile(self.gather_cfg())
 
     def unload_hidden_links(self, items):
         view_ids = []
@@ -737,6 +788,76 @@ class SheetFlowWindow(forms.WPFWindow):
             settings.save_profile(self.gather_cfg())
         except Exception:
             pass
+
+
+class NotifyWindow(forms.WPFWindow):
+    """Email settings with a test button."""
+
+    def __init__(self, ncfg):
+        forms.WPFWindow.__init__(self, NOTIFY_XAML)
+        self.result = None
+        n = dict(settings.DEFAULTS["notify"])
+        n.update(ncfg or {})
+        self.chk_enabled.IsChecked = n["enabled"]
+        self.tb_to.Text = n["to"]
+        fill(self.cb_provider, sorted(notify.PRESETS.keys()), n.get("provider", "Gmail"))
+        self.tb_host.Text = n["smtp_host"]
+        self.tb_port.Text = str(n["smtp_port"])
+        self.chk_ssl.IsChecked = n["ssl"]
+        self.tb_user.Text = n.get("username", "")
+        fill(self.cb_freq, notify.FREQUENCIES, n.get("frequency", "Every 25%"))
+        self.tb_pw_state.Text = ("A password is saved (encrypted for your Windows account). "
+                                 "Leave blank to keep it." if notify.has_password()
+                                 else "No password saved yet.")
+        self.cb_provider.SelectionChanged += self.on_provider
+        self.btn_test.Click += self.on_test
+        self.btn_save.Click += self.on_save
+        self.btn_cancel.Click += lambda s, a: self.Close()
+
+    def on_provider(self, sender, args):
+        preset = notify.PRESETS.get(self.cb_provider.SelectedItem)
+        if preset and preset[0]:
+            self.tb_host.Text, port, ssl = preset
+            self.tb_port.Text = str(port)
+            self.chk_ssl.IsChecked = ssl
+
+    def collect(self):
+        return {
+            "enabled": bool(self.chk_enabled.IsChecked),
+            "to": (self.tb_to.Text or "").strip(),
+            "from": "",
+            "username": (self.tb_user.Text or "").strip(),
+            "provider": self.cb_provider.SelectedItem or "Custom",
+            "smtp_host": (self.tb_host.Text or "").strip(),
+            "smtp_port": to_int(self.tb_port.Text, 587),
+            "ssl": bool(self.chk_ssl.IsChecked),
+            "frequency": self.cb_freq.SelectedItem or "Every 25%",
+        }
+
+    def store_password(self):
+        if self.pb_password.Password:
+            notify.save_password(self.pb_password.Password)
+
+    def on_test(self, sender, args):
+        n = self.collect()
+        if not n["to"] or not n["smtp_host"]:
+            forms.alert("Fill in the email address and mail server first.")
+            return
+        self.store_password()
+        try:
+            notify.send_now(n, "SheetFlow test email",
+                            "Email notifications from SheetFlow are working.\n\nModel: {0}".format(
+                                doc.Title))
+            forms.alert("Test email sent to {0}. Check your inbox (and spam).".format(n["to"]))
+        except Exception as ex:
+            forms.alert("Sending failed:\n{0}\n\nFor Gmail you need an App Password "
+                        "(Google Account > Security > 2-Step Verification > App passwords), "
+                        "not your normal password.".format(ex))
+
+    def on_save(self, sender, args):
+        self.store_password()
+        self.result = self.collect()
+        self.Close()
 
 
 if __name__ == "__main__":

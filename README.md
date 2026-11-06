@@ -28,10 +28,16 @@ Batch exporter for sheets and views with no export limit. Built for Revit 2022 t
 **Create tab**
 - Output folder (environment variables like `%USERPROFILE%` work), same folder or a subfolder per format.
 - Paper size and orientation per row (Auto = from the title block).
-- Progress bar with per-row status, a Stop button, optional CSV report, and open the folder when done.
+- Progress bar with per-row status and an estimated time left (learned from your past exports per model), a Stop button, optional CSV report, and open the folder when done.
 
 Settings are remembered between runs. Named profiles live in
 `%APPDATA%\pyRevit\SheetFlow\profiles`.
+
+**Email notifications** (Create tab → Email notifications...): get an email when an export
+starts (with the estimate), as it progresses (every 25%, every 10% or every sheet) and when it
+finishes, stops or fails, including which sheets failed. Works with Gmail (use an App
+Password), Outlook/Office 365 or any SMTP server. The password is encrypted with Windows DPAPI
+for your Windows account and stays on the PC. Use "Send test email" to check the setup.
 
 **Speed mode** (Create tab): temporarily unloads Revit links that don't appear on any
 exported sheet or view, then reloads them when the export finishes. Off by default.
@@ -52,6 +58,13 @@ Fixes:
 - **Close all but the active view.**
 - **Export warnings** to CSV, grouped by type.
 - **Save and compact** (non-workshared files; for workshared files use Sync with "Compact").
+
+## Slow Sheets (PaariTools → Model → Slow Sheets)
+
+Pick the sheets that take long to export. For every view on them it shows how much Revit
+has to draw: element count, visible Revit links (and, on Revit 2024+, how many linked
+elements they draw), CAD, filled regions, topography/toposolids, planting, crop and detail
+level. Views are ranked by weight, with concrete suggestions for the heaviest ones.
 
 ### Not included yet
 - Exporting sheets from linked models.

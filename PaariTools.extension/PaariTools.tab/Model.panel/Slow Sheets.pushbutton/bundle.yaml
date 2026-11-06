@@ -1,0 +1,6 @@
+title: Slow Sheets
+tooltip: >-
+  Pick sheets that export slowly and see, view by view, what Revit has to draw:
+  element counts, visible Revit links, CAD, filled regions, topography,
+  planting, crop and detail level, with suggestions for each heavy view.
+author: paari-bhai

@@ -468,6 +468,10 @@
                                     <ComboBox x:Name="cb_report" Width="170"/>
                                     <CheckBox x:Name="chk_open_folder" Content="Open folder when done" Margin="16,4,2,4"/>
                                 </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="btn_notify" Content="Email notifications..."/>
+                                    <TextBlock x:Name="tb_notify_status" VerticalAlignment="Center" Margin="8,0" Foreground="#5F6670"/>
+                                </StackPanel>
                                 <CheckBox x:Name="chk_unload_links" Content="Speed mode: unload Revit links that don't show on the exported sheets/views, reload after"
                                           ToolTip="Helps with big link sets. Reloading takes time too, so it pays off on larger batches. Workshared models unload only for you."/>
                             </StackPanel>
