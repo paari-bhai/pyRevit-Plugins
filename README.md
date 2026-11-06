@@ -53,6 +53,13 @@ Fixes:
 - **Export warnings** to CSV, grouped by type.
 - **Save and compact** (non-workshared files; for workshared files use Sync with "Compact").
 
+## Slow Sheets (PaariTools → Model → Slow Sheets)
+
+Pick the sheets that take long to export. For every view on them it shows how much Revit
+has to draw: element count, visible Revit links (and, on Revit 2024+, how many linked
+elements they draw), CAD, filled regions, topography/toposolids, planting, crop and detail
+level. Views are ranked by weight, with concrete suggestions for the heaviest ones.
+
 ### Not included yet
 - Exporting sheets from linked models.
 - Scheduled / unattended exports.
