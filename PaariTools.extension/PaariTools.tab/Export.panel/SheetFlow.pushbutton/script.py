@@ -14,7 +14,7 @@ from System.Windows import Visibility
 from System.Windows.Threading import DispatcherPriority
 from Autodesk.Revit.DB import PrintRange, ViewSet
 
-from sheetflow import collect, exporters, naming, runner, settings
+from sheetflow import collect, eta, exporters, naming, runner, settings
 from modelhealth import core as health
 from sheetflow.settings import FORMATS
 
@@ -543,6 +543,11 @@ class SheetFlowWindow(forms.WPFWindow):
             i.status = ""
         self.dg_create.ItemsSource = items
         self.tb_progress.Text = "Ready: {0} item(s), {1} format(s)".format(len(items), len(enabled))
+        est = eta.Estimator(eta.plan(items, cfg), eta.load_history(), doc.Title)
+        rem = est.remaining()
+        if rem is not None and items and enabled:
+            self.tb_progress.Text += "  -  estimated {0}, based on past exports".format(
+                eta.fmt_duration(rem))
         self.pb_progress.Value = 0
         self.tb_progress_detail.Text = ""
 
@@ -617,15 +622,20 @@ class SheetFlowWindow(forms.WPFWindow):
             else:
                 for i in items:
                     i.status = (i.status + "  " if i.status else "") + "{0}: {1}".format(fmt, text)
+            estimator.mark(fmt, ok=not text.startswith("Skipped"))
             self.pb_progress.Value = 100.0 * step / max(total, 1)
-            self.tb_progress.Text = "Completed {0:.0f}%  ({1} of {2})".format(
-                self.pb_progress.Value, step, total)
+            self.tb_progress.Text = "Completed {0:.0f}%  ({1} of {2})  -  {3}".format(
+                self.pb_progress.Value, step, total, estimator.text())
             self.tb_progress_detail.Text = u"{0}  {1}".format(
                 fmt, (item.number + " - " + item.name) if item else "combined file")
             self.dg_create.Items.Refresh()
             self.do_events()
             return not self._cancel
 
+        history = eta.load_history()
+        estimator = eta.Estimator(eta.plan(items, cfg), history, doc.Title)
+        self.tb_progress.Text = "Exporting...  {0}".format(estimator.text())
+        self.do_events()
         t_start = time.time()
         unloaded = []
         link_note = ""
@@ -635,6 +645,7 @@ class SheetFlowWindow(forms.WPFWindow):
                 if unloaded:
                     link_note = "\nSpeed mode unloaded {0} link(s) during export.".format(
                         len(unloaded))
+            estimator.start()
             results, cancelled = runner.run(doc, items, cfg, progress)
         except Exception as ex:
             logger.exception("Export failed")
@@ -661,6 +672,7 @@ class SheetFlowWindow(forms.WPFWindow):
                 report_path = runner.write_report(cfg, results)
             except Exception as ex:
                 logger.warning("Could not write report: {0}".format(ex))
+        eta.save_history(history, doc.Title, estimator.observed())
         elapsed = time.time() - t_start
         summary = "{0}{1} done, {2} skipped, {3} failed in {4}m {5:02d}s.".format(
             "Stopped. " if cancelled else "", ok, skipped, failed,

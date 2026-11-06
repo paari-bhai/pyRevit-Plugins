@@ -28,7 +28,7 @@ Batch exporter for sheets and views with no export limit. Built for Revit 2022 t
 **Create tab**
 - Output folder (environment variables like `%USERPROFILE%` work), same folder or a subfolder per format.
 - Paper size and orientation per row (Auto = from the title block).
-- Progress bar with per-row status, a Stop button, optional CSV report, and open the folder when done.
+- Progress bar with per-row status and an estimated time left (learned from your past exports per model), a Stop button, optional CSV report, and open the folder when done.
 
 Settings are remembered between runs. Named profiles live in
 `%APPDATA%\pyRevit\SheetFlow\profiles`.
